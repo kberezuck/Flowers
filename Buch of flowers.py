@@ -1,6 +1,3 @@
-from hiden_logic import get_based_price, get_life_time
-import re
-
 
 class Bouquet:
     def __init__(self):
@@ -8,12 +5,21 @@ class Bouquet:
 
     def add_flowers(self, flower):
         self.flowers.append(flower)
+        self.set_life_time()
+
+# при добавлении цветка в букет параллельно проставляем ему время жизни
+    def set_life_time(self):
+        for flower in self.flowers:
+            setattr(flower, 'life_time', Flowers.get_life_time(flower))
+        return flower.life_time
+
 
     def print_flowers(self):
         for flower in self.flowers:
             name = flower.name
             price = flower.price
-            print(f'{name} : {price} byn')
+            life_time = flower.life_time
+            print(f'{name} : {price} byn, время жизни цветка {life_time}')
 
     # получение общей стоимости букета: (проходясь по словарю мы из каждого объекта вытягиваем значение ключа price)
     def get_total_price(self):
@@ -21,13 +27,8 @@ class Bouquet:
         for flower in self.flowers:
             price = flower.price
             total_price += price
-        return print(f'общая стоимость букета составляет {total_price} byn')
+        print(f'общая стоимость букета составляет {total_price} byn')
 
-    # установление нового атрибута "время жизни цветка", которое рассчитывается из сторонней функции на основе его свежести
-    def set_life_time(self):
-        for flower in self.flowers:
-            setattr(flower, 'life_time', get_life_time(flower.freshness))
-        return flower.life_time
 
     #  метод высчитывания скорости увядания (в % в день) в зависимости от среднего времени жизни всех цветов в букете
     def average_life_time(self):
@@ -36,8 +37,7 @@ class Bouquet:
             total_life_time += flower.life_time
         average_life_time = total_life_time / len(self.flowers)
         withering_rate_of_flowers = 24 / average_life_time * 100  # 24 - изменяемая константа
-        return print(
-            f'Среднее время жизни букета составляет {average_life_time} часов, скорость увядания букета составляет {withering_rate_of_flowers} % в сутки')
+        print(f'Среднее время жизни букета составляет {average_life_time} часов, скорость увядания букета составляет {withering_rate_of_flowers} % в сутки')
 
     # сортировка по свежести
     def sort_by_freshness(self):
@@ -67,7 +67,7 @@ class Bouquet:
     def find_flower_by_color(self, color):
         found_flowers = []
         for flower in self.flowers:
-            if re.search(color, flower.color, re.IGNORECASE):
+            if flower.color == color.lower():
                 found_flowers.append(flower)
 
         if len(found_flowers) == 0:
@@ -75,7 +75,7 @@ class Bouquet:
         else:
             for flower in found_flowers:
                 print(flower.name)
-            return
+
 
 class Flowers:
     def __init__(self, name: str, color: str, freshness: float, stem_lenght: float):
@@ -84,6 +84,28 @@ class Flowers:
         self.freshness = freshness
         self.stem_lenght = stem_lenght
 
+    def get_based_price(self):
+        if self.freshness <= 50 or self.stem_lenght <= 50:  # в % и см
+            based_price = 5
+            return based_price
+        elif 50 < self.freshness < 100 and 50 < self.stem_lenght <= 100:
+            based_price = 10
+            return based_price
+        elif self.freshness == 100 and 50 < self.stem_lenght <= 100:
+            based_price = 15
+            return based_price
+
+    def get_life_time(self):
+        if self.freshness < 50:  # in %
+            life_time = 24  # in hours
+            return life_time
+        elif 50 <= self.freshness < 100:
+            life_time = 48
+            return life_time
+        else:
+            life_time = 72
+            return life_time
+
 
 
 
@@ -91,14 +113,14 @@ class Roses(Flowers):
     def __init__(self, name: str, color: str, freshness: float, stem_lenght: float, sort: str):
         super().__init__(name, color, freshness, stem_lenght)
         self.sort = sort
-        self.price = self.get_price(self.sort, self.freshness, self.stem_lenght)
+        self.price = self.get_price()
 
 
-    def get_price(self, sort, freshness, stem_lenght):
-        based_price = get_based_price(freshness=freshness, stem_lenght=stem_lenght)
-        if sort == "Dikson":
+    def get_price(self):
+        based_price = self.get_based_price()
+        if self.sort == "Dikson":
             price = based_price * 1.50
-        elif sort == "Limbo":
+        elif self.sort == "Limbo":
             price = based_price * 1.80
         else:
             price = based_price * 0.9
@@ -109,16 +131,16 @@ class Tulips(Flowers):
     def __init__(self, name: str, color: str, freshness: float, stem_lenght: float, sort: str):
         super().__init__(name, color, freshness, stem_lenght)
         self.sort = sort
-        self.price = self.get_price(self.sort, self.freshness, self.stem_lenght, self.color)
+        self.price = self.get_price()
 
 
-    def get_price(self, sort, freshness, stem_lenght, color):
-        based_price = get_based_price(freshness=freshness, stem_lenght=stem_lenght)
-        if sort == "Triumf" and color == "Red":
+    def get_price(self):
+        based_price = self.get_based_price()
+        if self.sort == "Triumf" and self.color == "Red":
             price = based_price * 1.50
-        elif sort == "Darvin" and color == "Blue" or color == "Yellow":
+        elif self.sort == "Darvin" and self.color == "Blue" or self.color == "Yellow":
             price = based_price * 1.80
-        elif sort == "Queen":
+        elif self.sort == "Queen":
             price = based_price * 2.0
         else:
             price = based_price * 0.85
@@ -129,36 +151,35 @@ class Pions(Flowers):
     def __init__(self, name: str, color: str, freshness: float, stem_lenght: float, sort: str):
         super().__init__(name, color, freshness, stem_lenght)
         self.sort = sort
-        self.price = self.get_price(self.sort, self.freshness, self.stem_lenght, self.color)
+        self.price = self.get_price()
 
 
-    def get_price(self, sort, freshness, stem_lenght, color):
-        based_price = get_based_price(freshness=freshness, stem_lenght=stem_lenght)
-        if sort == "Baccara" and color == "Red":
+    def get_price(self):
+        based_price = self.get_based_price()
+        if self.sort == "Baccara" and self.color == "Red":
             price = based_price * 1.50
-        elif sort == "Ksander" and color == "Blue" or color == "Yellow":
+        elif self.sort == "Ksander" and self.color == "Blue" or self.color == "Yellow":
             price = based_price * 1.80
         else:
             price = based_price * 0.85
         return price
 
-
 if __name__ == "__main__":
 
     first_buch = Bouquet()
     first_buch.add_flowers(
-        Roses(name='Lili', color='Red', freshness=50, stem_lenght=75, sort='Limbo')
+        Roses(name='Lili', color='red', freshness=50, stem_lenght=75, sort='Limbo')
     )
     first_buch.add_flowers(
-        Tulips(name='No_Barbie', color='Yellow', freshness=60, stem_lenght=55, sort='Darvin')
+        Tulips(name='No_Barbie', color='yellow', freshness=60, stem_lenght=55, sort='Darvin')
     )
     first_buch.add_flowers(
-        Pions(name='Sara', color='Red', freshness=100, stem_lenght=100, sort='Ksander')
+        Pions(name='Sara', color='red', freshness=100, stem_lenght=100, sort='Ksander')
     )
 
     first_buch.print_flowers()
     first_buch.get_total_price()
-    first_buch.set_life_time()
     first_buch.average_life_time()
     first_buch.sort_by_color()
-    first_buch.find_flower_by_color("blue")
+    first_buch.find_flower_by_color("BLUE")
+    first_buch.sort_by_stem_lenght()
